@@ -1,0 +1,14 @@
+{
+  "name": "hng-stage1-app",
+  "version": "1.0.0",
+  "description": "Minimal Node.js app for HNG Stage 1 deployment",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Yemisi",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
