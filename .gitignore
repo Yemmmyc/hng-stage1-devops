@@ -1,6 +1,6 @@
 # Ignore logs
 *.log
-deploy_*.log
+!deploy.log
 
 # Ignore OS files
 .DS_Store
