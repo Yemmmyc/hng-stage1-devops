@@ -1,0 +1,17 @@
+# Ignore logs
+*.log
+deploy_*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore Python bytecode if any
+__pycache__/
+
+# Ignore node_modules if any
+node_modules/
+
+# Ignore temporary files
+*.tmp
+*.swp
