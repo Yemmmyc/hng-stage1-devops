@@ -39,6 +39,7 @@ Run the deployment script:
 bash
 Copy code
 ./deploy.sh
+
 The script will prompt you to paste your GitHub PAT. Press Enter for all other prompts as default values are pre-configured.
 
 Once deployed, access the app via your browser at:
@@ -46,6 +47,7 @@ Once deployed, access the app via your browser at:
 cpp
 Copy code
 http://127.0.0.1:8080/
+
 📄 Script Features
 Stops and removes old containers and images
 
@@ -91,8 +93,9 @@ bash
 Copy code
 docker rm -f landing_page
 docker rmi landing_page_image
+
 📝 Author
-Name: Yemisi Okunroumu
+Name: Oluwayemisi Okunrounmu
 Email: yemmmyc@hotmail.com
 
 GitHub: https://github.com/Yemmmyc/hng-stage1-devops
