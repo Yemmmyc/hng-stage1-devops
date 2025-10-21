@@ -1,62 +1,52 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# ---------- Helper functions ----------
+# ---------------------------- Config ----------------------------
+APP_NAME="deployed_app"
+CONTAINER_PORT=8000       # internal container port
+HOST_PORT=80              # host port to expose
+LOG_DIR="./logs"
+LOG_FILE="$LOG_DIR/deploy_$(date +%Y%m%d_%H%M%S).log"
+DOCKER_IMAGE="$APP_NAME:latest"
+
+mkdir -p "$LOG_DIR"
+
+# ---------------------------- Logging --------------------------
 log() {
-    echo -e "[INFO] $1"
+    echo "[INFO] $(date +'%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"
 }
 
 fatal() {
-    echo -e "[ERROR] $1"
+    echo "[ERROR] $(date +'%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"
     exit 1
 }
 
-# ---------- User Inputs ----------
-read -p "Git repository URL [https://github.com/Yemmmyc/hng-stage1-devops.git]: " GIT_REPO
-GIT_REPO=${GIT_REPO:-https://github.com/Yemmmyc/hng-stage1-devops.git}
+# ---------------------------- Cleanup -------------------------
+cleanup() {
+    log "Stopping and removing old container if exists..."
+    if docker ps -a --format '{{.Names}}' | grep -q "^$APP_NAME\$"; then
+        docker stop "$APP_NAME" || true
+        docker rm "$APP_NAME" || true
+    fi
+    log "Removing old Docker image if exists..."
+    docker rmi -f "$DOCKER_IMAGE" || true
+}
 
-read -s -p "Personal Access Token (hidden): " GIT_TOKEN
-echo
-
-read -p "Branch name [main]: " GIT_BRANCH
-GIT_BRANCH=${GIT_BRANCH:-main}
-
-read -p "Remote SSH username [banji]: " SSH_USER
-SSH_USER=${SSH_USER:-banji}
-
-read -p "Remote server IP [127.0.0.1]: " REMOTE_IP
-REMOTE_IP=${REMOTE_IP:-127.0.0.1}
-
-read -p "SSH key path [/home/banji/.ssh/id_rsa]: " SSH_KEY
-SSH_KEY=${SSH_KEY:-/home/banji/.ssh/id_rsa}
-
-read -p "App container port [8000]: " CONTAINER_PORT
-CONTAINER_PORT=${CONTAINER_PORT:-8000}
-
-read -p "Host port to expose [80]: " HOST_PORT
-HOST_PORT=${HOST_PORT:-80}
-
-# ---------- Prepare Repository ----------
-log "Cloning repository..."
-if [ ! -d "./hng-stage1-devops" ]; then
-    git clone -b "$GIT_BRANCH" "https://$GIT_TOKEN@${GIT_REPO#https://}" ./hng-stage1-devops || fatal "Git clone failed"
-else
-    cd hng-stage1-devops
-    git pull origin "$GIT_BRANCH" || fatal "Git pull failed"
-    cd ..
+if [[ "${1:-}" == "--cleanup" ]]; then
+    cleanup
+    log "Cleanup completed."
+    exit 0
 fi
 
-log "Repository ready."
+# ---------------------------- Docker Build & Deploy ------------
+log "Building Docker image..."
+docker build -t "$DOCKER_IMAGE" .
 
-# ---------- Build Docker Image ----------
-log "Building Docker container..."
-cd ./hng-stage1-devops || fatal "Cannot enter repo folder"
-docker build -t deployed_app . || fatal "Docker build failed"
-cd ..
+log "Running Docker container..."
+cleanup  # ensure no conflicts
+docker run -d --name "$APP_NAME" -p "$HOST_PORT:$CONTAINER_PORT" "$DOCKER_IMAGE"
 
-log "Dockerized app deployed successfully."
-
-# ---------- Configure Nginx Reverse Proxy ----------
+# ---------------------------- Nginx Config ---------------------
 log "Configuring Nginx reverse proxy..."
 NGINX_CONFIG=$(cat <<EOF
 server {
@@ -69,22 +59,31 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
+
+    # Optional SSL placeholder:
+    # listen 443 ssl;
+    # ssl_certificate /path/to/cert.crt;
+    # ssl_certificate_key /path/to/cert.key;
 }
 EOF
 )
 
-ssh -i "$SSH_KEY" "$SSH_USER@$REMOTE_IP" bash <<EOF || fatal "Nginx config failed"
-set -e
-echo "$NGINX_CONFIG" | sudo tee /etc/nginx/sites-available/deployed_app.conf > /dev/null
-sudo ln -sf /etc/nginx/sites-available/deployed_app.conf /etc/nginx/sites-enabled/
-sudo nginx -t
+echo "$NGINX_CONFIG" | sudo tee /etc/nginx/sites-available/$APP_NAME.conf > /dev/null
+sudo ln -sf /etc/nginx/sites-available/$APP_NAME.conf /etc/nginx/sites-enabled/
+sudo nginx -t || fatal "Nginx configuration test failed."
 sudo systemctl reload nginx
-EOF
 
-log "Nginx reverse proxy configured."
-
-# ---------- Validate Deployment ----------
+# ---------------------------- Validation -----------------------
 log "Validating deployment..."
-ssh -i "$SSH_KEY" "$SSH_USER@$REMOTE_IP" curl -I "http://127.0.0.1:$HOST_PORT" || fatal "App validation failed"
+if ! docker ps --format '{{.Names}}' | grep -q "^$APP_NAME\$"; then
+    fatal "Docker container is not running!"
+fi
 
-log "Deployment complete. Application running on port $HOST_PORT"
+if ! curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$HOST_PORT" | grep -q "200"; then
+    fatal "Nginx is not proxying correctly!"
+fi
+
+log "Deployment successful. App running on http://127.0.0.1:$HOST_PORT"
+
+# ---------------------------- Exit -----------------------------
+exit 0
