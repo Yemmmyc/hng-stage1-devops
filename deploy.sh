@@ -140,8 +140,14 @@ log "Dockerized app deployed successfully."
 
 # ---------- Configure Nginx Reverse Proxy ----------
 log "Configuring Nginx reverse proxy..."
-ssh -i "$SSH_KEY" "$SSH_USER@$REMOTE_IP" bash <<EOF || fatal "Nginx config failed"
+
+ssh -i "$SSH_KEY" "$SSH_USER@$REMOTE_IP" bash <<'EOF_REMOTE'
 set -e
+
+# Variables passed from deploy.sh
+CONTAINER_PORT='"$CONTAINER_PORT"'
+
+# Create Nginx config
 sudo tee /etc/nginx/sites-available/deployed_app.conf > /dev/null <<NGINX
 server {
     listen 80;
@@ -151,15 +157,18 @@ server {
         proxy_pass http://127.0.0.1:$CONTAINER_PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 }
 NGINX
 
+# Enable site and reload Nginx
 sudo ln -sf /etc/nginx/sites-available/deployed_app.conf /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
-EOF
+EOF_REMOTE
 log "Nginx reverse proxy configured."
+
 
 # ---------- Validate Deployment ----------
 log "Validating deployment..."
