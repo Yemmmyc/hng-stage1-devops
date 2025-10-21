@@ -1,101 +1,128 @@
-# HNG Stage 1 DevOps - Automated Deployment Script
+HNG DevOps Stage 1 — Automated Deployment Bash Script
+Project Overview
 
-## 🎯 Project Overview
-This project is an **automated Bash deployment script** for a Dockerized application. It simulates a real-world DevOps workflow by deploying a Node.js application behind Nginx with a colorful landing page. The script handles:
+This project demonstrates a robust, production-grade Bash script to automate the setup, deployment, and configuration of a Dockerized Node.js application on a remote EC2 Linux server. It includes logging, error handling, SSH connectivity, Docker & Nginx installation, reverse proxy configuration, and full idempotency.
 
-- Docker image building
-- Container deployment
-- Port management
-- Logging
-- Idempotent redeployment
+Features
 
----
+Automated deployment: One script handles cloning, Docker build/run, Nginx configuration, and validation.
 
-## ⚙️ Prerequisites
-Before running the script, ensure you have:
+SSH-ready: Script connects to remote EC2 server using provided credentials.
 
-- **Docker** installed on your system
-- **Git** installed
-- **Bash shell**
-- **GitHub Personal Access Token (PAT)** for private repo access
-- **SSH access** if deploying on a remote server
+Logging & error handling: Timestamped logs and set -e/trap ensure failures are captured.
 
----
+Idempotent & cleanup-friendly: Stops/removes old containers, handles port conflicts, and includes optional --cleanup flag.
 
-## 🚀 Deployment Instructions
+Health checks: Validates Docker container, service, and Nginx proxy.
 
-1. Clone the repository:
+User-friendly prompts: Accepts default values for quick deployment; PAT can be pasted when prompted.
 
-```bash
-git clone https://github.com/Yemmmyc/hng-stage1-devops.git
-cd hng-stage1-devops
-Make the deployment script executable:
+Deployment Steps
+1. Prerequisites
 
-bash
-Copy code
+EC2 instance running Ubuntu
+
+Private key (.pem) for SSH access
+
+GitHub Personal Access Token (PAT)
+
+Docker installed (optional; script installs if missing)
+
+2. Script Usage
+# Make script executable
 chmod +x deploy.sh
-Run the deployment script:
 
-bash
-Copy code
+# Run deployment
 ./deploy.sh
 
-The script will prompt you to paste your GitHub PAT. Press Enter for all other prompts as default values are pre-configured.
 
-Once deployed, access the app via your browser at:
+You will be prompted for:
 
-cpp
-Copy code
-http://127.0.0.1:8080/
+Git repository URL (default: https://github.com/Yemmmyc/hng-stage1-devops.git)
 
-📄 Script Features
-Stops and removes old containers and images
+GitHub PAT
 
-Builds a new Docker image using Nginx
+Branch name (default: main)
 
-Copies the landing page to the container
+SSH Username (default: ubuntu)
 
-Checks if the host port is available and switches automatically if needed
+Server IP (EC2 instance)
 
-Deploys the container safely
+SSH Key Path (default: /home/ubuntu/.ssh/Automation.pem)
 
-Logs all actions to deploy.log with timestamps
+Container port (default: 8000)
 
-Idempotent — safe to re-run multiple times
+Host port (default: 80)
 
-🎨 Landing Page
-The landing page is colorful, responsive, and shows deployment success:
+Press Enter to accept default values.
 
-🎉 Message: App deployed successfully
+Optional flag for cleanup:
 
-🔗 Link: Directs users to the application
+./deploy.sh --cleanup
 
-Background gradients and styled text for visual appeal
+3. Logs
 
-Example:
+All actions are logged to:
+
+deploy.log — general logging
+
+deploy_YYYYMMDD_HHMMSS.log — timestamped logs per run
+
+Helps with troubleshooting and auditing.
+
+4. Troubleshooting
+
+Port conflicts: Script automatically switches if default port is in use.
+
+Docker permissions: Ensure user is in docker group.
+
+SSH issues: Ensure correct .pem permissions:
+
+chmod 400 /path/to/Automation.pem
 
 
-📂 Logs
-All actions are logged to deploy.log
+Network issues pulling Docker images: Confirm internet access on EC2.
 
-Timestamped logs (deploy_YYYYMMDD_HHMMSS.log) are created for each run
+Manual cleanup commands:
 
-Helps in troubleshooting and auditing deployments
-
-⚠️ Troubleshooting
-Port conflicts: If port 8080 is in use, the script automatically switches to 8076
-
-Network issues pulling Docker images: Ensure internet connectivity and Docker Hub access
-
-Container conflicts: Remove old containers manually using:
-
-bash
-Copy code
 docker rm -f landing_page
 docker rmi landing_page_image
 
-📝 Author
+5. Author
+
 Name: Oluwayemisi Okunrounmu
 Email: yemmmyc@hotmail.com
 
 GitHub: https://github.com/Yemmmyc/hng-stage1-devops
+
+✅ Final Checklist for Stage 1 Submission
+
+ Repository cloned successfully
+
+ README.md exists with content
+
+ deploy.sh exists and is executable
+
+ Bash script has proper shebang (#!/bin/bash)
+
+ Error handling implemented (set -e and trap)
+
+ Logging implemented (general + timestamped logs)
+
+ User input prompts with defaults
+
+ Git clone/pull implemented, branch switching included
+
+ SSH connectivity tested, commands executed remotely
+
+ EC2 server prepared: packages updated, Docker & Nginx installed, Docker group configured
+
+ Docker container build/run included
+
+ Nginx configured as reverse proxy to container port
+
+ Health checks: Docker container & service verified, Nginx proxy verified
+
+ Script idempotent & safe to re-run
+
+ Optional --cleanup flag included for removing all deployed resources
